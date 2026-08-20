@@ -143,12 +143,58 @@
     background: #fafaf7; border-radius: 8px;
   }
   @media (display-mode: standalone) { .install-hint { display: none !important; } }
+
+  /* Tab navigation */
+  .tab-nav {
+    display: flex; gap: 6px; margin: 12px 0 16px;
+    background: #ececdf; border-radius: 10px;
+    padding: 4px;
+  }
+  .tab-btn {
+    flex: 1; padding: 10px 8px; font-size: 13px; font-weight: 600;
+    background: transparent; color: #666;
+    border: none; border-radius: 7px;
+    cursor: pointer; font-family: inherit;
+    -webkit-appearance: none;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab-btn.active { background: #042C53; color: white; }
+  .tab-btn:active:not(.active) { background: rgba(0,0,0,0.06); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Tracker-specific */
+  .profit-card {
+    background: #E8F4EF; border-radius: 12px;
+    padding: 18px 16px; margin: 18px 0 14px;
+    border: 0.5px solid #0F6E56;
+  }
+  .profit-label { font-size: 13px; color: #0A4D3C; margin: 0 0 6px; font-weight: 500; }
+  .profit-value {
+    font-size: 32px; font-weight: 600; color: #0F6E56;
+    margin: 0 0 12px; line-height: 1.1; letter-spacing: -0.5px;
+  }
+  .profit-value.loss { color: #791F1F; }
+  .breakeven-line {
+    display: flex; justify-content: space-between;
+    font-size: 13px; color: #0A4D3C;
+    padding: 8px 0; margin-top: 8px;
+    border-top: 0.5px solid rgba(15, 110, 86, 0.2);
+  }
+  .breakeven-line .val { font-weight: 600; }
 </style>
 </head>
 <body>
 
 <h1>Max Allowable Offer</h1>
-<p class="subtitle">Flip deal analyzer · exact algebraic solve</p>
+<p class="subtitle">Flip deal analyzer · exact solve, corrected interest math</p>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="tab-mao">MAO Calculator</button>
+  <button class="tab-btn" data-tab="tab-tracker">Deal Tracker</button>
+</div>
+
+<div id="tab-mao" class="tab-content active">
 
 <div class="section">
   <div class="grid-2">
@@ -191,7 +237,7 @@
         <input type="number" id="buyerclosingpct" value="2.3" min="0" max="10" step="0.1" inputmode="decimal" class="has-suffix">
         <span class="suffix">%</span>
       </div>
-      <p class="hint">% × purchase. Title, escrow, recording, prop tax, 17L.</p>
+      <p class="hint">% × purchase. Title, escrow, recording, prop tax, 17L. EXCLUDES prepaid interest (in Financing).</p>
     </div>
     <div class="field">
       <label>Seller closing %</label>
@@ -200,14 +246,6 @@
         <span class="suffix">%</span>
       </div>
       <p class="hint">% × purchase you absorb. Excise stays with seller.</p>
-    </div>
-    <div class="field">
-      <label>Annual insurance premium</label>
-      <div class="input-wrap">
-        <span class="prefix">$</span>
-        <input type="number" id="insuranceannual" value="2400" step="100" inputmode="numeric" class="has-prefix">
-      </div>
-      <p class="hint">Full year upfront. Prorated to project length below.</p>
     </div>
     <div class="field">
       <label>Inspections</label>
@@ -279,6 +317,14 @@
       <p class="hint">Lawn, snow, HOA, security. × duration.</p>
     </div>
     <div class="field">
+      <label>Annual insurance premium</label>
+      <div class="input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="insuranceannual" value="2400" step="100" inputmode="numeric" class="has-prefix">
+      </div>
+      <p class="hint">Full year premium. Counted at full annual cost.</p>
+    </div>
+    <div class="field">
       <label>Staging</label>
       <div class="input-wrap">
         <span class="prefix">$</span>
@@ -298,7 +344,7 @@
   <div class="subtotal-block">
     <div class="subtotal-line"><span class="lbl">Monthly total <span class="calc-note">(util + maint)</span></span><span class="val" id="pro-line-monthly">$300/mo</span></div>
     <div class="subtotal-line"><span class="lbl">Monthly × <span id="pro-mo-count">6</span> months</span><span class="val" id="pro-line-monthlytotal">$1,800</span></div>
-    <div class="subtotal-line"><span class="lbl">Insurance prorated <span class="calc-note">(annual × mo/12)</span></span><span class="val" id="pro-line-insurance">$1,200</span></div>
+    <div class="subtotal-line"><span class="lbl">Insurance premium <span class="calc-note">(full annual)</span></span><span class="val" id="pro-line-insurance">$2,400</span></div>
     <div class="subtotal-line"><span class="lbl">Rehab + staging + cleaning</span><span class="val" id="pro-line-onetime">$62,400</span></div>
     <div class="subtotal-total"><span>Project subtotal</span><span class="val" id="sub-project">$65,400</span></div>
   </div>
@@ -337,12 +383,25 @@
       <p class="calc-value" id="calc-loan">$216,000</p>
       <p class="hint">Purchase × LTV. Cash down: <span id="calc-down">$24,000</span></p>
     </div>
+    <div class="field">
+      <label>Prepaid interest days</label>
+      <div class="input-wrap">
+        <input type="number" id="prepaidinterestdays" value="15" min="0" max="60" step="1" inputmode="numeric" class="has-suffix">
+        <span class="suffix">days</span>
+      </div>
+      <p class="hint">Days from close to end of that month. Typical mid-month close = 15.</p>
+    </div>
+    <div class="field">
+      <p class="calc-display">Calculated prepaid interest</p>
+      <p class="calc-value" id="calc-prepaid">$990</p>
+      <p class="hint">Loan × rate × (days ÷ 365). Paid at closing.</p>
+    </div>
   </div>
   <div class="subtotal-block">
     <div class="subtotal-line"><span class="lbl">Monthly IO payment <span class="calc-note">(loan × rate ÷ 12)</span></span><span class="val" id="fin-line-monthly">$1,980/mo</span></div>
-    <div class="subtotal-line"><span class="lbl">Monthly × <span id="fin-mo-count">6</span> months</span><span class="val" id="fin-line-monthlytotal">$11,880</span></div>
+    <div class="subtotal-line"><span class="lbl">Monthly × <span id="fin-mo-count">5</span> full months</span><span class="val" id="fin-line-monthlytotal">$9,900</span></div>
     <div class="subtotal-line"><span class="lbl">Points <span class="calc-note">(loan × pts%)</span></span><span class="val" id="fin-line-points">$5,400</span></div>
-    <div class="subtotal-line"><span class="lbl">Prepaid interest <span class="calc-note">(half month avg)</span></span><span class="val" id="fin-line-prepaid">$990</span></div>
+    <div class="subtotal-line"><span class="lbl">Prepaid interest <span class="calc-note">(<span id="fin-prepaid-days">15</span> days at close)</span></span><span class="val" id="fin-line-prepaid">$990</span></div>
     <div class="subtotal-total"><span>Financing subtotal</span><span class="val" id="sub-financing">$18,270</span></div>
   </div>
 </div>
@@ -546,6 +605,223 @@
   <p class="profit-note" id="profit-note"></p>
 </div>
 
+</div> <!-- end #tab-mao -->
+
+<div id="tab-tracker" class="tab-content">
+
+  <p class="subtitle" style="margin-top:0;">Actuals mode · type real numbers, see live profit</p>
+
+  <div class="step-header"><div class="step-num">1</div><p class="step-title">Purchase (actual)</p></div>
+  <div class="section">
+    <div class="grid-2">
+      <div class="field">
+        <label>Purchase price</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-purchase" value="" step="1000" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">What you actually paid.</p>
+      </div>
+      <div class="field">
+        <label>Total closing costs paid</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-closingtotal" value="" step="100" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Everything on settlement statement: points, prepaid interest, title, escrow, recording, taxes, etc.</p>
+      </div>
+      <div class="field">
+        <label>Wholesale / other</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-wholesale" value="" step="500" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Assignment fees or anything else paid to acquire the deal.</p>
+      </div>
+    </div>
+    <div class="subtotal-block">
+      <div class="subtotal-total"><span>Purchase subtotal</span><span class="val" id="t-sub-purchase">$0</span></div>
+    </div>
+  </div>
+
+  <div class="step-header"><div class="step-num">2</div><p class="step-title">Project (actual to date)</p></div>
+  <div class="section">
+    <div class="grid-2">
+      <div class="field">
+        <label>Rehab spent</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-rehab" value="" step="500" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Running total of materials + labor + permits.</p>
+      </div>
+      <div class="field">
+        <label>Insurance premium</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-insurance" value="" step="100" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Full annual premium paid.</p>
+      </div>
+      <div class="field">
+        <label>Utilities paid</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-utilities" value="" step="50" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Total, not monthly.</p>
+      </div>
+      <div class="field">
+        <label>Property maintenance</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-maintenance" value="" step="50" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Total paid on lawn, snow, HOA, security.</p>
+      </div>
+      <div class="field">
+        <label>Staging</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-staging" value="" step="100" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Furniture rental total.</p>
+      </div>
+      <div class="field">
+        <label>Cleaning</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-cleaning" value="" step="50" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Deep clean before listing.</p>
+      </div>
+      <div class="field">
+        <label>Inspections / misc</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-misc" value="" step="100" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Sewer scope, pest, appraisal, anything else.</p>
+      </div>
+    </div>
+    <div class="subtotal-block">
+      <div class="subtotal-total"><span>Project subtotal</span><span class="val" id="t-sub-project">$0</span></div>
+    </div>
+  </div>
+
+  <div class="step-header"><div class="step-num">3</div><p class="step-title">Financing (ongoing)</p></div>
+  <div class="section">
+    <p class="label-sub" style="margin-top:0;">Points and prepaid interest are already in Purchase closing costs above. This is just ongoing loan cost during hold.</p>
+    <div class="grid-2">
+      <div class="field">
+        <label>Monthly interest paid to date</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-interestpaid" value="" step="100" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Running total of IO payments made.</p>
+      </div>
+      <div class="field">
+        <label>Final interest at payoff</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-finalinterest" value="" step="100" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Estimated interest between last payment and sale.</p>
+      </div>
+    </div>
+    <div class="subtotal-block">
+      <div class="subtotal-total"><span>Financing subtotal</span><span class="val" id="t-sub-financing">$0</span></div>
+    </div>
+  </div>
+
+  <div class="step-header"><div class="step-num">4</div><p class="step-title">Sale (projected)</p></div>
+  <div class="section">
+    <div class="field">
+      <label>Expected sale price</label>
+      <div class="input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="t-saleprice" value="" step="1000" inputmode="numeric" class="has-prefix">
+      </div>
+      <p class="hint">What you plan to list/sell at. Drives the profit calc below.</p>
+    </div>
+
+    <p class="group-label">Sale costs</p>
+    <div class="grid-2">
+      <div class="field">
+        <label>Listing agent</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-listing" value="" step="100" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">From CW Title estimate.</p>
+      </div>
+      <div class="field">
+        <label>Buyer agent</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-buyerbroker" value="" step="100" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">From CW Title estimate.</p>
+      </div>
+      <div class="field">
+        <label>Settlement fees</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-settlement" value="" step="10" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Title + escrow + sales taxes total from CW Title.</p>
+      </div>
+      <div class="field">
+        <label>Excise tax</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-excise" value="" step="10" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">WA state excise on sale.</p>
+      </div>
+      <div class="field">
+        <label>Property tax proration</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-taxpro" value="" step="10" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Positive = you owe buyer. Negative = buyer owes you.</p>
+      </div>
+      <div class="field">
+        <label>Buyer concessions</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="t-concessions" value="" step="100" inputmode="numeric" class="has-prefix">
+        </div>
+        <p class="hint">Closing credit + repair credit + warranty. All-in.</p>
+      </div>
+    </div>
+    <div class="subtotal-block">
+      <div class="subtotal-total"><span>Sale costs subtotal</span><span class="val" id="t-sub-sale">$0</span></div>
+    </div>
+  </div>
+
+  <div class="profit-card">
+    <p class="profit-label">Live projected profit</p>
+    <p class="profit-value" id="t-profit">$0</p>
+    <div class="math-block" style="color:#0A4D3C;background:rgba(255,255,255,0.6);">
+      <div class="math-line"><span>Expected sale price</span><span id="t-math-sale">$0</span></div>
+      <div class="math-line"><span>− Purchase</span><span id="t-math-pur">−$0</span></div>
+      <div class="math-line"><span>− Project</span><span id="t-math-proj">−$0</span></div>
+      <div class="math-line"><span>− Financing</span><span id="t-math-fin">−$0</span></div>
+      <div class="math-line"><span>− Sale costs</span><span id="t-math-salecosts">−$0</span></div>
+      <div class="math-total" style="border-top-color:rgba(15,110,86,0.3);"><span>= Profit</span><span id="t-math-total">$0</span></div>
+    </div>
+    <div class="breakeven-line">
+      <span>Break-even sale price</span>
+      <span class="val" id="t-breakeven">$0</span>
+    </div>
+    <p class="hint" style="margin-top:4px;color:#0A4D3C;">Sell above this to profit. Sell below and you lose money.</p>
+  </div>
+
+</div> <!-- end #tab-tracker -->
+
 <div class="install-hint" id="install-hint">
   Tip: Open in Safari, tap Share, then "Add to Home Screen" to install as an app.
 </div>
@@ -554,9 +830,9 @@
 (function() {
   var fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   function fmtNeg(n) { return '−' + fmt.format(Math.abs(Math.round(n))); }
-  var ids = ['arv','profit','purchase','buyerclosingpct','sellerclosingpct','insuranceannual','inspections','misc','wholesale','months','rehab','utilities','maintenance','staging','cleaning','ltv','points','rate','listing','buyerbroker','title','titletax','escrow','escrowtax','excise','taxcredit','taxexpense','creditpct','creditdollar','inspectionrepairs','warranty','finalinterestdays','actualpurchase'];
+  var ids = ['arv','profit','purchase','buyerclosingpct','sellerclosingpct','insuranceannual','inspections','misc','wholesale','months','rehab','utilities','maintenance','staging','cleaning','ltv','points','rate','prepaidinterestdays','listing','buyerbroker','title','titletax','escrow','escrowtax','excise','taxcredit','taxexpense','creditpct','creditdollar','inspectionrepairs','warranty','finalinterestdays','actualpurchase'];
 
-  var STORAGE_KEY = 'mao_calc_v3';
+  var STORAGE_KEY = 'mao_calc_v5';
 
   function v(id) { return +document.getElementById(id).value || 0; }
   function vRaw(id) { return document.getElementById(id).value.trim(); }
@@ -589,12 +865,15 @@
     var finalDays = v('finalinterestdays');
     var bc = v('buyerclosingpct') / 100;
     var sc = v('sellerclosingpct') / 100;
-    return bc + sc + ltv * pts + ltv * rate * (months/12) + ltv * rate * (0.5/12) + ltv * rate * (finalDays/365);
+    var prepaidDays = v('prepaidinterestdays');
+    // Match the compute() function: use (months-1) full monthly payments + prepaid days + final days
+    var monthsForInterest = Math.max(months - 1, 0);
+    return bc + sc + ltv * pts + ltv * rate * (monthsForInterest/12) + ltv * rate * (prepaidDays/365) + ltv * rate * (finalDays/365);
   }
 
   function fixedCosts() {
     var months = v('months');
-    var insurance = v('insuranceannual') * (months/12);
+    var insurance = v('insuranceannual');
     var holding = (v('utilities') + v('maintenance')) * months;
     var purchaseFixed = v('inspections') + v('misc') + v('wholesale');
     var projectFixed = v('rehab') + v('staging') + v('cleaning');
@@ -627,8 +906,14 @@
     var cashDown = price - loanAmount;
     var pointsCost = loanAmount * (points / 100);
     var monthlyIO = loanAmount * (rate / 100) / 12;
-    var monthlyInterestTotal = monthlyIO * months;
-    var prepaidInterest = monthlyIO * 0.5;
+    // Interest breakdown for a project of N months (close mid-month, sell mid-month):
+    //   prepaid at close = half month (below)
+    //   monthly IO payments × (N-1) full months in between
+    //   final accrued = extra days at payoff (in sale costs)
+    // Total interest = exactly N months when defaults are used
+    var monthlyInterestTotal = monthlyIO * Math.max(months - 1, 0);
+    var prepaidInterestDays = v('prepaidinterestdays');
+    var prepaidInterest = loanAmount * (rate / 100) * (prepaidInterestDays / 365);
     var finalInterestDays = v('finalinterestdays');
     var finalAccruedInterest = loanAmount * (rate / 100) * (finalInterestDays / 365);
     var financingSub = pointsCost + monthlyInterestTotal + prepaidInterest;
@@ -638,7 +923,7 @@
     var purchaseSub = buyerClosing + sellerClosing + otherPurchase;
     var monthlyHolding = v('utilities') + v('maintenance');
     var monthlyHoldTotal = monthlyHolding * months;
-    var insuranceCost = v('insuranceannual') * (months / 12);
+    var insuranceCost = v('insuranceannual');
     var oneTimeProject = v('rehab') + v('staging') + v('cleaning');
     var projectSub = monthlyHoldTotal + insuranceCost + oneTimeProject;
     return {
@@ -695,10 +980,12 @@
     document.getElementById('calc-loan').textContent = fmt.format(Math.round(w.loanAmount));
     document.getElementById('calc-down').textContent = fmt.format(Math.round(w.cashDown));
     document.getElementById('fin-line-monthly').textContent = fmt.format(Math.round(w.monthlyIO)) + '/mo';
-    document.getElementById('fin-mo-count').textContent = months;
+    document.getElementById('fin-mo-count').textContent = Math.max(months - 1, 0);
     document.getElementById('fin-line-monthlytotal').textContent = fmt.format(Math.round(w.monthlyInterestTotal));
     document.getElementById('fin-line-points').textContent = fmt.format(Math.round(w.pointsCost));
     document.getElementById('fin-line-prepaid').textContent = fmt.format(Math.round(w.prepaidInterest));
+    document.getElementById('calc-prepaid').textContent = fmt.format(Math.round(w.prepaidInterest));
+    document.getElementById('fin-prepaid-days').textContent = v('prepaidinterestdays');
     document.getElementById('sub-financing').textContent = fmt.format(Math.round(w.financingSub));
     document.getElementById('calc-finalinterest').textContent = fmt.format(Math.round(w.finalAccruedInterest));
     document.getElementById('sale-line-agents').textContent = fmt.format(Math.round(s.agentFees));
@@ -799,6 +1086,98 @@
 
   loadState();
   recalc();
+
+  // ============ DEAL TRACKER TAB ============
+  var TRACKER_KEY = 'mao_tracker_v1';
+  var TAB_KEY = 'mao_active_tab';
+  var trackerIds = ['t-purchase','t-closingtotal','t-wholesale','t-rehab','t-insurance','t-utilities','t-maintenance','t-staging','t-cleaning','t-misc','t-interestpaid','t-finalinterest','t-saleprice','t-listing','t-buyerbroker','t-settlement','t-excise','t-taxpro','t-concessions'];
+
+  function tv(id) { return +document.getElementById(id).value || 0; }
+
+  function saveTracker() {
+    try {
+      var state = {};
+      trackerIds.forEach(function(id) { state[id] = document.getElementById(id).value; });
+      localStorage.setItem(TRACKER_KEY, JSON.stringify(state));
+    } catch(e) {}
+  }
+  function loadTracker() {
+    try {
+      var raw = localStorage.getItem(TRACKER_KEY);
+      if (!raw) return;
+      var state = JSON.parse(raw);
+      trackerIds.forEach(function(id) {
+        if (state[id] !== undefined && state[id] !== null) {
+          document.getElementById(id).value = state[id];
+        }
+      });
+    } catch(e) {}
+  }
+
+  function trackerRecalc() {
+    var purchase = tv('t-purchase') + tv('t-closingtotal') + tv('t-wholesale');
+    var project = tv('t-rehab') + tv('t-insurance') + tv('t-utilities') + tv('t-maintenance') + tv('t-staging') + tv('t-cleaning') + tv('t-misc');
+    var financing = tv('t-interestpaid') + tv('t-finalinterest');
+    var saleCosts = tv('t-listing') + tv('t-buyerbroker') + tv('t-settlement') + tv('t-excise') + tv('t-taxpro') + tv('t-concessions');
+    var salePrice = tv('t-saleprice');
+
+    var totalCosts = purchase + project + financing + saleCosts;
+    var profit = salePrice - totalCosts;
+    var breakeven = totalCosts; // sale price at which profit = 0
+
+    document.getElementById('t-sub-purchase').textContent = fmt.format(Math.round(purchase));
+    document.getElementById('t-sub-project').textContent = fmt.format(Math.round(project));
+    document.getElementById('t-sub-financing').textContent = fmt.format(Math.round(financing));
+    document.getElementById('t-sub-sale').textContent = fmt.format(Math.round(saleCosts));
+
+    var profitEl = document.getElementById('t-profit');
+    profitEl.textContent = (profit < 0 ? '−' : '') + fmt.format(Math.abs(Math.round(profit)));
+    profitEl.className = 'profit-value' + (profit < 0 ? ' loss' : '');
+
+    document.getElementById('t-math-sale').textContent = fmt.format(Math.round(salePrice));
+    document.getElementById('t-math-pur').textContent = fmtNeg(purchase);
+    document.getElementById('t-math-proj').textContent = fmtNeg(project);
+    document.getElementById('t-math-fin').textContent = fmtNeg(financing);
+    document.getElementById('t-math-salecosts').textContent = fmtNeg(saleCosts);
+    document.getElementById('t-math-total').textContent = (profit < 0 ? '−' : '') + fmt.format(Math.abs(Math.round(profit)));
+    document.getElementById('t-breakeven').textContent = fmt.format(Math.round(breakeven));
+
+    saveTracker();
+  }
+
+  trackerIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    el.addEventListener('input', trackerRecalc);
+    el.addEventListener('change', trackerRecalc);
+    el.addEventListener('focus', function() { this.select(); });
+  });
+
+  loadTracker();
+  trackerRecalc();
+
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var target = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(target).classList.add('active');
+      try { localStorage.setItem(TAB_KEY, target); } catch(e) {}
+      window.scrollTo(0, 0);
+    });
+  });
+
+  // Restore last active tab
+  try {
+    var savedTab = localStorage.getItem(TAB_KEY);
+    if (savedTab && document.getElementById(savedTab)) {
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelector('[data-tab="' + savedTab + '"]').classList.add('active');
+      document.getElementById(savedTab).classList.add('active');
+    }
+  } catch(e) {}
 })();
 </script>
 
